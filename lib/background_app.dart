@@ -99,13 +99,21 @@ Future<bool> onIosBackground(ServiceInstance service) async {
 
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
-  //DartPluginRegistrant.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
+  DartPluginRegistrant.ensureInitialized();
+
+  service.on('destroy').listen((event) async {
+    await service.stopSelf();
+  });
+
   if (service is AndroidServiceInstance) {
     service.setForegroundNotificationInfo(
       title: 'My App Service',
       content: "Updated at ${DateTime.now()}",
     );
   }
+
+  //Future.delayed(const Duration(seconds: 10), () async => await service.stopSelf());
 
   Timer.periodic(const Duration(seconds: 15), (timer) async {
     if (service is AndroidServiceInstance) {
@@ -118,7 +126,7 @@ void onStart(ServiceInstance service) async {
       }
     }
 
-    final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
     final value = prefs.getString('key');
     print('Value: $value');
     final Position position = await Geolocator.getCurrentPosition();
