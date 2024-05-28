@@ -12,6 +12,7 @@ dependencies:
   flutter_background_service: ^5.0.5
   geolocator: ^11.0.0
   http: ^1.1.0
+  permission_handler: ^10.4.5
   shared_preferences: ^2.2.3
 
 dev_dependencies:

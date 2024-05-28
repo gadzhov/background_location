@@ -7,6 +7,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import 'package:permission_handler/permission_handler.dart' as ph;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BackgroundApp extends StatefulWidget {
@@ -17,6 +18,9 @@ class BackgroundApp extends StatefulWidget {
 }
 
 class _BackgroundAppState extends State<BackgroundApp> {
+  bool _hasPermission = false;
+  String _errorMsg = '';
+
   @override
   void initState() {
     super.initState();
@@ -24,35 +28,48 @@ class _BackgroundAppState extends State<BackgroundApp> {
   }
 
   Future<void> _init() async {
-    final locationServiceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!locationServiceEnabled) {
-      print('Location services are disabled.');
-      return;
-    }
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        print('Location permissions are denied');
-        return;
+    try {
+      final ph.ServiceStatus locationServiceStatus = await ph.Permission.location.serviceStatus;
+      if (locationServiceStatus == ph.ServiceStatus.disabled) {
+        throw Exception( 'Location services are disabled.');
       }
-    }
 
-    if (permission == LocationPermission.deniedForever) {
-      print('Location permissions are permanently denied, we cannot request permissions.');
-      return;
-    }
+      ph.PermissionStatus permission = await ph.Permission.locationAlways.status;
+      if (permission == ph.PermissionStatus.denied) {
+        permission = await ph.Permission.locationWhenInUse.request();
+        permission = await ph.Permission.locationAlways.request();
+        if (permission == ph.PermissionStatus.denied) {
+          throw Exception('Location permissions are denied');
+        }
+      }
 
-    if (await FlutterBackgroundService().startService()) {
-      print('FlutterBackgroundService started');
+      if (permission == ph.PermissionStatus.permanentlyDenied) {
+        throw Exception('Location permissions are permanently denied, we cannot request permissions.');
+      }
+
+      if (await FlutterBackgroundService().startService()) {
+        print('FlutterBackgroundService started');
+        setState(() {
+          _hasPermission = true;
+        });
+      }
+    } catch (error) {
+      setState(() {
+        _hasPermission = false;
+        _errorMsg = error.toString();
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Flutter background service + geolocator'),
+    return Column(
+      children: [
+        const Center(
+          child: Text('Flutter background service + geolocator'),
+        ),
+        if (!_hasPermission) Text(_errorMsg)
+      ],
     );
   }
 }
@@ -84,7 +101,7 @@ Future<bool> onIosBackground(ServiceInstance service) async {
 
   final Position position = await Geolocator.getCurrentPosition();
   await http.post(
-    Uri.parse('https://c1d0-94-156-194-28.ngrok-free.app/dart-layer/mobile-background-service'),
+    Uri.parse('https://4fb4-185-183-34-46.ngrok-free.app/dart-layer/mobile-background-service'),
     headers: <String, String>{
       'Content-Type': 'application/json',
     },
@@ -131,7 +148,7 @@ void onStart(ServiceInstance service) async {
     print('Value: $value');
     final Position position = await Geolocator.getCurrentPosition();
     await http.post(
-      Uri.parse('https://c1d0-94-156-194-28.ngrok-free.app/dart-layer/mobile-background-service'),
+      Uri.parse('https://4fb4-185-183-34-46.ngrok-free.app/dart-layer/mobile-background-service'),
       headers: <String, String>{
         'Content-Type': 'application/json',
       },
