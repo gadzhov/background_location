@@ -29,10 +29,12 @@ class BackgroundLocationState extends State<BackgroundLocation> {
   void initState() {
     super.initState();
 
-    LocationManager().interval = 15;
-    LocationManager().distanceFilter = 0;
-    LocationManager().notificationTitle = 'CARP Location Example';
-    LocationManager().notificationMsg = 'CARP is tracking your location';
+    LocationManager()
+      ..interval = 0
+      ..accuracy = LocationAccuracy.NAVIGATION
+      ..distanceFilter = 500
+      ..notificationTitle = 'CARP Location Example'
+      ..notificationMsg = 'CARP is tracking your location';
 
     _status = LocationStatus.initialized;
   }
@@ -78,6 +80,7 @@ class BackgroundLocationState extends State<BackgroundLocation> {
 
     locationSubscription?.cancel();
     locationSubscription = LocationManager().locationStream.listen(onData);
+    await LocationManager().stop();
     await LocationManager().start();
     setState(() {
       _status = LocationStatus.running;
